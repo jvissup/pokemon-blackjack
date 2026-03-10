@@ -596,23 +596,23 @@
     <section class="hero">
       <div class="hero-top">
         <div>
-          <h1 class="title">Pokemon Blackjack Booth</h1>
+          <h1 class="title">Pokemon Blackjack Challenge</h1>
           <p class="subtitle">
-            A static one-file 6-deck blackjack game for a card-show booth. Number cards map to Pokemon by HP tier,
-            Energy cards act as Aces, face cards are Trainers, and only the Tier 0 prize is guaranteed until the player cashes out.
+            Step up, play a Pokemon-themed blackjack run, and decide after each win if you want to cash out or keep chasing the next prize.
+            Pokemon cards are matched by HP value, Energy cards are Aces, and Trainers are your face cards.
           </p>
         </div>
         <div class="pill-row">
           <div class="pill">Entry: <strong>$10</strong></div>
-          <div class="pill">6-deck shoe: <strong>312 cards</strong></div>
-          <div class="pill">Blackjack pays like a normal win</div>
+          <div class="pill">6-deck shoe</div>
+          <div class="pill">Cash out any time after your first win</div>
         </div>
       </div>
       <div class="pill-row small">
         <div class="pill">No split</div>
         <div class="pill">No double</div>
-        <div class="pill">Dealer stands on soft 17</div>
-        <div class="pill">Pushes replay the same streak tier</div>
+        <div class="pill">Blackjack counts as a normal win</div>
+        <div class="pill">Pushes replay the same level</div>
       </div>
     </section>
 
@@ -624,44 +624,44 @@
         </section>
 
         <section class="panel">
-          <h2 class="panel-title">Booth Math Snapshot</h2>
+          <h2 class="panel-title">Player Status</h2>
           <div class="stats">
             <div class="stat">
-              <div class="stat-label">Resolved win rate used for odds</div>
-              <div class="stat-value" id="resolvedWinRate">47.39%</div>
-            </div>
-            <div class="stat">
-              <div class="stat-label">Current chance to next milestone</div>
-              <div class="stat-value" id="nextMilestoneOdds">-</div>
-            </div>
-            <div class="stat">
               <div class="stat-label">Current streak</div>
-              <div class="stat-value" id="streakStat">0</div>
+              <div class="stat-value" id="resolvedWinRate">0 Wins</div>
             </div>
             <div class="stat">
-              <div class="stat-label">Best unlocked cashout</div>
-              <div class="stat-value" id="cashoutStat">Tier 0</div>
+              <div class="stat-label">Best unlocked prize</div>
+              <div class="stat-value" id="streakStat">Japanese Pack</div>
+            </div>
+            <div class="stat">
+              <div class="stat-label">Next unlock</div>
+              <div class="stat-value" id="nextMilestoneOdds">1 Win</div>
+            </div>
+            <div class="stat">
+              <div class="stat-label">Wins needed</div>
+              <div class="stat-value" id="cashoutStat">1</div>
             </div>
           </div>
           <div class="meta" style="margin-top: 14px;">
-            <div id="currentPrizeText">Guaranteed base prize: Japanese Pack.</div>
-            <div id="sessionStateText">Start a new session to put a fresh player into the shoe.</div>
+            <div id="currentPrizeText">Starter prize: Japanese Pack.</div>
+            <div id="sessionStateText">Start a new game when the next player is ready.</div>
           </div>
         </section>
 
         <section class="panel">
-          <h2 class="panel-title">Rules</h2>
+          <h2 class="panel-title">How To Play</h2>
           <div class="meta">
-            <div>Tier 0 is always guaranteed.</div>
-            <div>Any higher tier only becomes real when the player hits <strong>Cash Out</strong>.</div>
-            <div>If they lose before cashing out, they drop back to the guaranteed Tier 0 prize.</div>
-            <div>Pushes keep the same streak alive and do not move the ladder.</div>
-            <div>The shoe automatically reshuffles when it gets close to the cut card.</div>
+            <div>You always start with the Japanese Pack locked in.</div>
+            <div>Win hands in a row to unlock bigger prizes.</div>
+            <div>After any win, you can hit <strong>Cash Out</strong> or keep pressing your luck.</div>
+            <div>If you lose before cashing out, you fall back to the starter prize.</div>
+            <div>Pushes keep your run alive and replay the same level.</div>
           </div>
         </section>
 
         <section class="panel">
-          <h2 class="panel-title">Session Log</h2>
+          <h2 class="panel-title">Game Feed</h2>
           <div id="log" class="log"></div>
         </section>
       </aside>
@@ -672,16 +672,16 @@
             <div class="status-left">
               <span id="shoeCount" class="badge">Shoe: 312 cards</span>
               <span id="discardCount" class="badge">Discard: 0</span>
-              <span id="roundBadge" class="badge gold">No active round</span>
+              <span id="roundBadge" class="badge gold">No active hand</span>
             </div>
             <div class="status-right">
-              <span id="lockedPrizeBadge" class="badge good">Guaranteed: Japanese Pack</span>
-              <span id="nextTierBadge" class="badge warn">Next: Tier 1</span>
+              <span id="lockedPrizeBadge" class="badge good">Starter Prize: Japanese Pack</span>
+              <span id="nextTierBadge" class="badge warn">Next Unlock: 1 Win</span>
             </div>
           </div>
 
           <div id="message" class="message">
-            Hit <strong style="margin: 0 4px;">Start Session</strong> to seat a player and deal the opening hand.
+            Hit <strong style="margin: 0 4px;">New Player</strong> to start a fresh run.
           </div>
 
           <section class="zone">
@@ -701,26 +701,27 @@
           </section>
 
           <div class="controls">
-            <button id="startBtn" class="primary">Start Session</button>
-            <button id="dealBtn" class="secondary" disabled>Deal Next Hand</button>
+            <button id="startBtn" class="primary">New Player</button>
+            <button id="dealBtn" class="secondary" disabled>Deal Hand</button>
             <button id="hitBtn" class="ghost" disabled>Hit</button>
             <button id="standBtn" class="ghost" disabled>Stand</button>
             <button id="cashoutBtn" class="danger" disabled>Cash Out</button>
-            <button id="resetBtn" class="ghost">Reset Booth</button>
+            <button id="resetBtn" class="ghost">Reset Game</button>
           </div>
         </section>
 
         <section class="split">
           <section class="panel">
-            <h2 class="panel-title">Tier Hit Rates From Session Start</h2>
+            <h2 class="panel-title">Prize Path</h2>
             <div id="oddsList" class="meta"></div>
           </section>
           <section class="panel">
-            <h2 class="panel-title">Vercel Notes</h2>
+            <h2 class="panel-title">Card Guide</h2>
             <div class="meta">
-              <div>This is a pure static HTML file with inline CSS and JS, so you can deploy it on Vercel with zero build setup.</div>
-              <div>Drop <code>index.html</code> at the project root and deploy it as a static site.</div>
-              <div>The Pokemon artwork is loaded from web-hosted official-artwork sprite URLs. Swap those to local assets later if you want an offline booth version.</div>
+              <div>20 HP to 100 HP Pokemon cards count as 2 through 10.</div>
+              <div>Energy cards are Aces and can count as 1 or 11.</div>
+              <div>Trainer cards are your Jacks, Queens, and Kings.</div>
+              <div>The game uses a 6-deck shoe for a fast, casino-style flow.</div>
             </div>
           </section>
         </section>
@@ -729,16 +730,15 @@
   </div>
 
   <script>
-    const RESOLVED_WIN_RATE = 0.4739;
     const CUT_CARD_THRESHOLD = 52;
 
     const PRIZE_LADDER = [
-      { wins: 0, label: "Japanese Pack", cost: 3, summary: "Guaranteed starter pack" },
-      { wins: 1, label: "Japanese Pack + $5 Coupon", cost: 6, summary: "Coupon costs you $3" },
-      { wins: 2, label: "Japanese Pack + Chinese Pack + $5 Coupon", cost: 8, summary: "Player can cash or press" },
-      { wins: 3, label: "English Pack", cost: 8, summary: "Flat-cost middle step" },
-      { wins: 4, label: "Japanese Pack 2", cost: 12, summary: "Premium chase tier" },
-      { wins: 6, label: "English Tin", cost: 20, summary: "Jackpot table prize" }
+      { wins: 0, label: "Japanese Pack", summary: "Your starter prize is always safe." },
+      { wins: 1, label: "Japanese Pack + Bonus Coupon", summary: "Your first win unlocks the first upgrade." },
+      { wins: 2, label: "Japanese Pack + Chinese Pack + Bonus Coupon", summary: "A stronger bundle if you keep the streak rolling." },
+      { wins: 3, label: "English Pack", summary: "A clean mid-run cash-out point." },
+      { wins: 4, label: "Japanese Pack 2", summary: "A premium prize for a hot streak." },
+      { wins: 6, label: "English Tin", summary: "The top chase prize for a monster run." }
     ];
 
     const art = (id) => `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${id}.png`;
@@ -994,24 +994,6 @@
       return PRIZE_LADDER.find((tier) => tier.wins > streak) || null;
     }
 
-    function formatPercent(n) {
-      return `${(n * 100).toFixed(2)}%`;
-    }
-
-    function oddsToReachTier(wins) {
-      return Math.pow(RESOLVED_WIN_RATE, wins);
-    }
-
-    function oddsFromCurrentStreak(currentStreak, targetWins) {
-      if (targetWins <= currentStreak) return 1;
-      return Math.pow(RESOLVED_WIN_RATE, targetWins - currentStreak);
-    }
-
-    function expectedPrizeValueFromStart(tier) {
-      const base = PRIZE_LADDER[0].cost;
-      return base + oddsToReachTier(tier.wins) * (tier.cost - base);
-    }
-
     function createCardEl(card, hidden = false) {
       const root = document.createElement("div");
       root.className = "playing-card";
@@ -1093,17 +1075,16 @@
         if (nextTier && nextTier.wins === tier.wins) node.classList.add("active");
         if (tier.wins > state.streak) node.classList.add("locked");
 
-        const hitRate = formatPercent(oddsToReachTier(tier.wins));
-        const ev = expectedPrizeValueFromStart(tier);
+        const unlockText = tier.wins === 0 ? "Starter prize" : `Unlocks at ${tier.wins} win${tier.wins === 1 ? "" : "s"} in a row`;
 
         node.innerHTML = `
           <div class="tier-head">
-            <span>Tier ${tier.wins}</span>
+            <span>${tier.wins === 0 ? "Starter" : `${tier.wins} Win${tier.wins === 1 ? "" : "s"}`}</span>
             <span>${tier.label}</span>
           </div>
           <div class="tier-sub">
-            Cost to you: <strong>$${tier.cost}</strong> • Hit rate from session start: <strong>${hitRate}</strong><br>
-            Start-to-target EV: <strong>$${ev.toFixed(2)}</strong> • ${tier.summary}
+            <strong>${unlockText}</strong><br>
+            ${tier.summary}
           </div>
         `;
         el.ladder.appendChild(node);
@@ -1112,9 +1093,10 @@
 
     function renderOddsList() {
       el.oddsList.innerHTML = "";
-      PRIZE_LADDER.filter((tier) => tier.wins > 0).forEach((tier) => {
+      PRIZE_LADDER.forEach((tier) => {
         const item = document.createElement("div");
-        item.innerHTML = `<strong>Tier ${tier.wins}</strong> • ${tier.label} • hit rate ${formatPercent(oddsToReachTier(tier.wins))}`;
+        const label = tier.wins === 0 ? "Starter" : `${tier.wins} win${tier.wins === 1 ? "" : "s"}`;
+        item.innerHTML = `<strong>${label}</strong> - ${tier.label}`;
         el.oddsList.appendChild(item);
       });
     }
@@ -1122,23 +1104,24 @@
     function renderStats() {
       const currentTier = getCurrentTier(state.streak);
       const nextTier = getNextTier(state.streak);
-      el.resolvedWinRate.textContent = formatPercent(RESOLVED_WIN_RATE);
-      el.streakStat.textContent = String(state.streak);
-      el.cashoutStat.textContent = `Tier ${currentTier.wins}`;
-      el.currentPrizeText.innerHTML = `Current cashout: <strong>${currentTier.label}</strong> (cost $${currentTier.cost}).`;
+      const winsNeeded = nextTier ? nextTier.wins - state.streak : 0;
+      el.resolvedWinRate.textContent = `${state.streak} Win${state.streak === 1 ? "" : "s"}`;
+      el.streakStat.textContent = currentTier.label;
+      el.cashoutStat.textContent = nextTier ? String(winsNeeded) : "Ready";
+      el.currentPrizeText.innerHTML = `Unlocked now: <strong>${currentTier.label}</strong>.`;
       el.sessionStateText.innerHTML = state.sessionActive
         ? (state.sessionEnded
-          ? `Session finished. Final prize: <strong>${state.finalPrize.label}</strong>.`
-          : `Session live. Tier 0 is the only guaranteed prize until the player cashes out.`)
-        : "Start a new session to put a fresh player into the shoe.";
-      el.nextMilestoneOdds.textContent = nextTier ? formatPercent(oddsFromCurrentStreak(state.streak, nextTier.wins)) : "Locked";
+          ? `Game finished. Final prize: <strong>${state.finalPrize.label}</strong>.`
+          : `Game live. After your next win, choose to cash out or keep going.`)
+        : "Start a new game when the next player is ready.";
+      el.nextMilestoneOdds.textContent = nextTier ? nextTier.label : "Top prize reached";
       el.shoeCount.textContent = `Shoe: ${state.shoe.length} cards`;
       el.discardCount.textContent = `Discard: ${state.discard.length}`;
-      el.roundBadge.textContent = state.roundActive ? "Round live" : (state.roundOver ? "Round settled" : "No active round");
-      el.lockedPrizeBadge.textContent = `Guaranteed: ${PRIZE_LADDER[0].label}`;
+      el.roundBadge.textContent = state.roundActive ? "Hand live" : (state.roundOver ? "Hand finished" : "No active hand");
+      el.lockedPrizeBadge.textContent = `Starter Prize: ${PRIZE_LADDER[0].label}`;
       el.nextTierBadge.textContent = nextTier
-        ? `Next: Tier ${nextTier.wins} (${nextTier.label})`
-        : "Next: Top tier reached";
+        ? `Next Unlock: ${nextTier.label}`
+        : "Next Unlock: Top prize reached";
     }
 
     function renderLog() {
@@ -1195,8 +1178,8 @@
       state.cashoutTier = PRIZE_LADDER[0];
       state.finalPrize = null;
       discardCurrentHands();
-      logEntry("New player seated. Tier 0 Japanese Pack is guaranteed.");
-      updateMessage("Player seated. Hit <strong>Deal Next Hand</strong> to start the streak.");
+      logEntry("New player seated. Japanese Pack starter prize is locked in.");
+      updateMessage("Player seated. Hit <strong>Deal Hand</strong> to start the streak.");
       renderEverything();
     }
 
@@ -1227,7 +1210,7 @@
       const total = handValue(state.playerHand);
       updateMessage(`Player hits and moves to <strong>${total}</strong>.`);
       if (total > 21) {
-        settleRound("loss", `Player busts with ${total}. The streak breaks and they fall back to Tier 0.`);
+        settleRound("loss", `Player busts with ${total}. The run ends and they fall back to the starter prize.`);
       }
       renderEverything();
     }
@@ -1251,10 +1234,10 @@
         return;
       }
       if (playerTotal < dealerTotal) {
-        settleRound("loss", `Dealer ${dealerTotal} beats player ${playerTotal}. The streak resets to Tier 0.`);
+        settleRound("loss", `Dealer ${dealerTotal} beats player ${playerTotal}. The run ends and the starter prize stays locked in.`);
         return;
       }
-      settleRound("push", `Push at ${playerTotal}. The streak stays alive and the player replays the same tier.`);
+      settleRound("push", `Push at ${playerTotal}. The run stays alive and the same prize level is still in play.`);
     }
 
     function settleRound(result, summary) {
@@ -1265,8 +1248,8 @@
       if (result === "win") {
         state.streak += 1;
         state.cashoutTier = getCurrentTier(state.streak);
-        updateMessage(`${summary} Current streak: <strong>${state.streak}</strong>. Cashout now for <strong>${state.cashoutTier.label}</strong> or keep going.`);
-        logEntry(`Win. Streak moves to ${state.streak}. Current cashout: ${state.cashoutTier.label}.`);
+        updateMessage(`${summary} Current streak: <strong>${state.streak}</strong>. Cash out now for <strong>${state.cashoutTier.label}</strong> or keep chasing the next unlock.`);
+        logEntry(`Win. Current unlock: ${state.cashoutTier.label}.`);
       }
 
       if (result === "push") {
@@ -1277,8 +1260,8 @@
       if (result === "loss") {
         state.sessionEnded = true;
         state.finalPrize = PRIZE_LADDER[0];
-        updateMessage(`${summary} Final prize: <strong>${state.finalPrize.label}</strong>. Start a new session for the next player.`);
-        logEntry(`Loss. Session ends on Tier 0 (${state.finalPrize.label}).`);
+        updateMessage(`${summary} Final prize: <strong>${state.finalPrize.label}</strong>. Start a new game for the next player.`);
+        logEntry(`Loss. Game ends on the starter prize.`);
       }
 
       renderEverything();
@@ -1290,7 +1273,7 @@
       state.roundActive = false;
       state.roundOver = false;
       state.finalPrize = getCurrentTier(state.streak);
-      updateMessage(`Player cashes out at <strong>Tier ${state.finalPrize.wins}</strong> for <strong>${state.finalPrize.label}</strong>. Start a new session for the next player.`);
+      updateMessage(`Player cashes out for <strong>${state.finalPrize.label}</strong>. Start a new game for the next player.`);
       logEntry(`Cash out. Player leaves with ${state.finalPrize.label}.`);
       renderEverything();
     }
@@ -1309,7 +1292,7 @@
       state.finalPrize = null;
       state.sessionEnded = false;
       state.log = [];
-      updateMessage('Booth reset. Hit <strong>Start Session</strong> when the next player steps up.');
+      updateMessage('Booth reset. Hit <strong>New Player</strong> when the next player steps up.');
       renderEverything();
     }
 
