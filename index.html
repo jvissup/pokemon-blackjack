@@ -319,6 +319,50 @@
       align-items: flex-start;
     }
 
+    .hand-wrapper {
+      flex: 1 1 320px;
+      min-width: 280px;
+      display: grid;
+      gap: 10px;
+      padding: 14px;
+      border-radius: 20px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(15, 23, 42, 0.34);
+    }
+
+    .hand-wrapper.active {
+      border-color: rgba(56, 189, 248, 0.6);
+      background: rgba(14, 165, 233, 0.12);
+      box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.18) inset;
+    }
+
+    .hand-wrapper.done {
+      border-color: rgba(255,255,255,0.2);
+    }
+
+    .hand-caption {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      font-weight: 800;
+      color: #e2e8f0;
+    }
+
+    .hand-outcome {
+      color: var(--muted);
+      font-size: 0.86rem;
+      line-height: 1.35;
+    }
+
+    .hand-stack {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      min-height: 180px;
+      align-items: flex-start;
+    }
+
     .playing-card {
       width: 128px;
       height: 180px;
@@ -609,9 +653,9 @@
         </div>
       </div>
       <div class="pill-row small">
-        <div class="pill">No split</div>
+        <div class="pill">Split matching pairs once</div>
         <div class="pill">No double</div>
-        <div class="pill">Blackjack counts as a normal win</div>
+        <div class="pill">Blackjack wins normally + locks a coupon</div>
         <div class="pill">Pushes replay the same level</div>
       </div>
     </section>
@@ -654,9 +698,9 @@
           <div class="meta">
             <div>You always start with the Japanese Pack locked in.</div>
             <div>Win hands in a row to unlock bigger prizes.</div>
-            <div>After any win, you can hit <strong>Cash Out</strong> or keep pressing your luck.</div>
-            <div>If you lose before cashing out, you fall back to the starter prize.</div>
-            <div>Pushes keep your run alive and replay the same level.</div>
+            <div>Matching opening pairs can split once. Win both split hands to jump two levels.</div>
+            <div>Any opening blackjack locks an extra coupon for the run.</div>
+            <div>If you lose before cashing out, you fall back to the starter prize. Pushes replay the same level.</div>
           </div>
         </section>
 
@@ -676,6 +720,7 @@
             </div>
             <div class="status-right">
               <span id="lockedPrizeBadge" class="badge good">Starter Prize: Japanese Pack</span>
+              <span id="bonusBadge" class="badge gold">Blackjack Bonus: None</span>
               <span id="nextTierBadge" class="badge warn">Next Unlock: 1 Win</span>
             </div>
           </div>
@@ -705,6 +750,7 @@
             <button id="dealBtn" class="secondary" disabled>Deal Hand</button>
             <button id="hitBtn" class="ghost" disabled>Hit</button>
             <button id="standBtn" class="ghost" disabled>Stand</button>
+            <button id="splitBtn" class="secondary" disabled>Split</button>
             <button id="cashoutBtn" class="danger" disabled>Cash Out</button>
             <button id="resetBtn" class="ghost">Reset Game</button>
           </div>
@@ -721,6 +767,7 @@
               <div>20 HP to 100 HP Pokemon cards count as 2 through 10.</div>
               <div>Energy cards are Aces and can count as 1 or 11.</div>
               <div>Trainer cards are your Jacks, Queens, and Kings.</div>
+              <div>Matching opening pairs can split once. Opening blackjacks lock bonus coupons.</div>
               <div>The game uses a 6-deck shoe for a fast, casino-style flow.</div>
             </div>
           </section>
@@ -842,6 +889,7 @@
       discardCount: document.getElementById("discardCount"),
       roundBadge: document.getElementById("roundBadge"),
       lockedPrizeBadge: document.getElementById("lockedPrizeBadge"),
+      bonusBadge: document.getElementById("bonusBadge"),
       nextTierBadge: document.getElementById("nextTierBadge"),
       message: document.getElementById("message"),
       dealerScore: document.getElementById("dealerScore"),
@@ -853,6 +901,7 @@
       dealBtn: document.getElementById("dealBtn"),
       hitBtn: document.getElementById("hitBtn"),
       standBtn: document.getElementById("standBtn"),
+      splitBtn: document.getElementById("splitBtn"),
       cashoutBtn: document.getElementById("cashoutBtn"),
       resetBtn: document.getElementById("resetBtn")
     };
@@ -861,22 +910,26 @@
       shoe: [],
       discard: [],
       sessionActive: false,
+      sessionEnded: false,
       roundActive: false,
       roundOver: false,
       showDealerHole: false,
-      playerHand: [],
       dealerHand: [],
+      playerHands: [],
+      activeHandIndex: 0,
+      handOutcomes: [],
+      splitRound: false,
       streak: 0,
-      cashoutTier: PRIZE_LADDER[0],
+      blackjackCouponCount: 0,
+      roundStartedWithBlackjack: false,
       finalPrize: null,
-      sessionEnded: false,
       log: []
     };
 
     function buildSingleDeck() {
       const cards = [];
 
-      SUITS.forEach((suit, index) => {
+      SUITS.forEach((suit) => {
         const energy = ENERGY_META[suit];
         cards.push({
           rank: "A",
@@ -942,14 +995,18 @@
       return array;
     }
 
+    function logEntry(text) {
+      state.log.unshift(text);
+      renderLog();
+    }
+
     function drawCard() {
       if (state.shoe.length <= CUT_CARD_THRESHOLD) {
         logEntry("Cut card reached. Fresh 6-deck shoe shuffled.");
         state.shoe = buildShoe(6);
         state.discard = [];
       }
-      const card = state.shoe.pop();
-      return card;
+      return state.shoe.pop();
     }
 
     function handValue(hand) {
@@ -966,18 +1023,8 @@
       return total;
     }
 
-    function isSoft17(hand) {
-      let total = 0;
-      let aces = 0;
-      hand.forEach((card) => {
-        total += card.value;
-        if (card.rank === "A") aces += 1;
-      });
-      while (total > 21 && aces > 0) {
-        total -= 10;
-        aces -= 1;
-      }
-      return total === 17 && aces > 0;
+    function isNaturalBlackjack(hand) {
+      return hand.length === 2 && handValue(hand) === 21;
     }
 
     function getVisibleDealerScore() {
@@ -992,6 +1039,47 @@
 
     function getNextTier(streak) {
       return PRIZE_LADDER.find((tier) => tier.wins > streak) || null;
+    }
+
+    function getPrizeLabel(streak = state.streak, blackjackCoupons = state.blackjackCouponCount) {
+      let label = getCurrentTier(streak).label;
+      if (blackjackCoupons > 0) {
+        label += blackjackCoupons === 1 ? " + Blackjack Coupon" : ` + Blackjack Coupons x${blackjackCoupons}`;
+      }
+      return label;
+    }
+
+    function getCurrentPlayerHand() {
+      return state.playerHands[state.activeHandIndex] || [];
+    }
+
+    function canSplitCurrentHand() {
+      if (!state.roundActive || state.roundOver || state.playerHands.length !== 1) return false;
+      const hand = getCurrentPlayerHand();
+      return hand.length === 2 && hand[0].value === hand[1].value;
+    }
+
+    function getOutcomeLabel(status) {
+      const map = {
+        pending: "Waiting",
+        playing: "Live",
+        stood: "Standing",
+        bust: "Bust",
+        win: "Won",
+        loss: "Lost",
+        push: "Push"
+      };
+      return map[status] || "Live";
+    }
+
+    function getPlayerScoreLabel() {
+      if (!state.playerHands.length) return "-";
+      if (!state.splitRound) return state.playerHands[0].length ? handValue(state.playerHands[0]) : "-";
+      if (state.roundActive) return `Hand ${state.activeHandIndex + 1}: ${handValue(getCurrentPlayerHand())}`;
+      const wins = state.handOutcomes.filter((outcome) => outcome === "win").length;
+      const pushes = state.handOutcomes.filter((outcome) => outcome === "push").length;
+      const losses = state.handOutcomes.filter((outcome) => outcome === "loss" || outcome === "bust").length;
+      return `${wins}W ${pushes}P ${losses}L`;
     }
 
     function createCardEl(card, hidden = false) {
@@ -1051,16 +1139,44 @@
       el.playerHand.innerHTML = "";
       el.dealerHand.innerHTML = "";
 
-      state.playerHand.forEach((card) => {
-        el.playerHand.appendChild(createCardEl(card));
-      });
+      if (state.playerHands.length <= 1) {
+        (state.playerHands[0] || []).forEach((card) => {
+          el.playerHand.appendChild(createCardEl(card));
+        });
+      } else {
+        state.playerHands.forEach((hand, index) => {
+          const wrapper = document.createElement("div");
+          wrapper.className = "hand-wrapper";
+          if (state.roundActive && index === state.activeHandIndex && state.handOutcomes[index] === "playing") wrapper.classList.add("active");
+          if (state.roundOver || ["stood", "bust", "win", "loss", "push"].includes(state.handOutcomes[index])) wrapper.classList.add("done");
+
+          const caption = document.createElement("div");
+          caption.className = "hand-caption";
+          caption.innerHTML = `<span>Hand ${index + 1}</span><span>${handValue(hand)}</span>`;
+
+          const outcome = document.createElement("div");
+          outcome.className = "hand-outcome";
+          outcome.textContent = `${getOutcomeLabel(state.handOutcomes[index])} hand`;
+
+          const stack = document.createElement("div");
+          stack.className = "hand-stack";
+          hand.forEach((card) => {
+            stack.appendChild(createCardEl(card));
+          });
+
+          wrapper.appendChild(caption);
+          wrapper.appendChild(outcome);
+          wrapper.appendChild(stack);
+          el.playerHand.appendChild(wrapper);
+        });
+      }
 
       state.dealerHand.forEach((card, index) => {
         const hidden = !state.showDealerHole && !state.roundOver && index === 1;
         el.dealerHand.appendChild(createCardEl(card, hidden));
       });
 
-      el.playerScore.textContent = state.playerHand.length ? handValue(state.playerHand) : "-";
+      el.playerScore.textContent = getPlayerScoreLabel();
       el.dealerScore.textContent = getVisibleDealerScore();
     }
 
@@ -1099,6 +1215,14 @@
         item.innerHTML = `<strong>${label}</strong> - ${tier.label}`;
         el.oddsList.appendChild(item);
       });
+
+      const splitNote = document.createElement("div");
+      splitNote.innerHTML = "<strong>Split rule</strong> - Win both split hands to jump two levels.";
+      el.oddsList.appendChild(splitNote);
+
+      const blackjackNote = document.createElement("div");
+      blackjackNote.innerHTML = "<strong>Blackjack bonus</strong> - Any opening 21 locks an extra coupon.";
+      el.oddsList.appendChild(blackjackNote);
     }
 
     function renderStats() {
@@ -1106,22 +1230,32 @@
       const nextTier = getNextTier(state.streak);
       const winsNeeded = nextTier ? nextTier.wins - state.streak : 0;
       el.resolvedWinRate.textContent = `${state.streak} Win${state.streak === 1 ? "" : "s"}`;
-      el.streakStat.textContent = currentTier.label;
+      el.streakStat.textContent = getPrizeLabel(state.streak, 0);
       el.cashoutStat.textContent = nextTier ? String(winsNeeded) : "Ready";
-      el.currentPrizeText.innerHTML = `Unlocked now: <strong>${currentTier.label}</strong>.`;
-      el.sessionStateText.innerHTML = state.sessionActive
-        ? (state.sessionEnded
-          ? `Game finished. Final prize: <strong>${state.finalPrize.label}</strong>.`
-          : `Game live. After your next win, choose to cash out or keep going.`)
-        : "Start a new game when the next player is ready.";
+      el.currentPrizeText.innerHTML = `Unlocked now: <strong>${getPrizeLabel(state.streak)}</strong>.`;
+
+      if (state.sessionActive) {
+        if (state.sessionEnded) {
+          el.sessionStateText.innerHTML = `Game finished. Final prize: <strong>${state.finalPrize}</strong>.`;
+        } else {
+          const bonusText = state.blackjackCouponCount > 0
+            ? ` Extra blackjack coupon${state.blackjackCouponCount === 1 ? " is" : "s are"} locked in.`
+            : "";
+          el.sessionStateText.innerHTML = `Game live. After your next win, choose to cash out or keep going.${bonusText}`;
+        }
+      } else {
+        el.sessionStateText.textContent = "Start a new game when the next player is ready.";
+      }
+
       el.nextMilestoneOdds.textContent = nextTier ? nextTier.label : "Top prize reached";
       el.shoeCount.textContent = `Shoe: ${state.shoe.length} cards`;
       el.discardCount.textContent = `Discard: ${state.discard.length}`;
       el.roundBadge.textContent = state.roundActive ? "Hand live" : (state.roundOver ? "Hand finished" : "No active hand");
-      el.lockedPrizeBadge.textContent = `Starter Prize: ${PRIZE_LADDER[0].label}`;
-      el.nextTierBadge.textContent = nextTier
-        ? `Next Unlock: ${nextTier.label}`
-        : "Next Unlock: Top prize reached";
+      el.lockedPrizeBadge.textContent = `Starter Prize: ${state.blackjackCouponCount > 0 ? "Japanese Pack + Blackjack Coupon" : "Japanese Pack"}`;
+      el.bonusBadge.textContent = state.blackjackCouponCount > 0
+        ? `Blackjack Bonus: ${state.blackjackCouponCount} Coupon${state.blackjackCouponCount === 1 ? "" : "s"} Locked`
+        : "Blackjack Bonus: None";
+      el.nextTierBadge.textContent = nextTier ? `Next Unlock: ${nextTier.label}` : "Next Unlock: Top prize reached";
     }
 
     function renderLog() {
@@ -1146,6 +1280,7 @@
       el.dealBtn.disabled = !state.sessionActive || state.roundActive || state.sessionEnded;
       el.hitBtn.disabled = !state.roundActive || state.roundOver;
       el.standBtn.disabled = !state.roundActive || state.roundOver;
+      el.splitBtn.disabled = !canSplitCurrentHand();
       el.cashoutBtn.disabled = !state.sessionActive || state.sessionEnded || state.streak < 1 || state.roundActive;
     }
 
@@ -1153,16 +1288,16 @@
       el.message.innerHTML = html;
     }
 
-    function logEntry(text) {
-      state.log.unshift(text);
-      renderLog();
-    }
-
     function discardCurrentHands() {
-      if (state.playerHand.length) state.discard.push(...state.playerHand);
+      if (state.playerHands.length) {
+        state.playerHands.flat().forEach((card) => state.discard.push(card));
+      }
       if (state.dealerHand.length) state.discard.push(...state.dealerHand);
-      state.playerHand = [];
+      state.playerHands = [];
       state.dealerHand = [];
+      state.handOutcomes = [];
+      state.activeHandIndex = 0;
+      state.splitRound = false;
     }
 
     function startSession() {
@@ -1175,7 +1310,8 @@
       state.roundActive = false;
       state.showDealerHole = false;
       state.streak = 0;
-      state.cashoutTier = PRIZE_LADDER[0];
+      state.blackjackCouponCount = 0;
+      state.roundStartedWithBlackjack = false;
       state.finalPrize = null;
       discardCurrentHands();
       logEntry("New player seated. Japanese Pack starter prize is locked in.");
@@ -1183,87 +1319,220 @@
       renderEverything();
     }
 
+    function awardBlackjackCoupon() {
+      state.blackjackCouponCount += 1;
+      state.roundStartedWithBlackjack = true;
+      logEntry(`Blackjack! Bonus coupon locked in. Total locked coupons: ${state.blackjackCouponCount}.`);
+    }
+
     function startRound() {
       discardCurrentHands();
       state.roundActive = true;
       state.roundOver = false;
       state.showDealerHole = false;
+      state.roundStartedWithBlackjack = false;
 
-      state.playerHand.push(drawCard(), drawCard());
-      state.dealerHand.push(drawCard(), drawCard());
+      state.playerHands = [[drawCard(), drawCard()]];
+      state.handOutcomes = ["playing"];
+      state.dealerHand = [drawCard(), drawCard()];
+      state.activeHandIndex = 0;
+      state.splitRound = false;
 
-      const playerTotal = handValue(state.playerHand);
+      const playerTotal = handValue(state.playerHands[0]);
       const dealerVisible = handValue([state.dealerHand[0]]);
-      updateMessage(`Fresh hand dealt. Player shows <strong>${playerTotal}</strong>. Dealer shows <strong>${dealerVisible}</strong>.`);
+      const splitHint = canSplitCurrentHand() ? " Matching pair spotted — Split is available." : "";
+      updateMessage(`Fresh hand dealt. Player shows <strong>${playerTotal}</strong>. Dealer shows <strong>${dealerVisible}</strong>.${splitHint}`);
       logEntry(`Hand dealt. Player ${playerTotal} vs dealer upcard ${dealerVisible}.`);
 
-      if (playerTotal === 21) {
+      if (isNaturalBlackjack(state.playerHands[0])) {
+        awardBlackjackCoupon();
+        updateMessage("Blackjack! Extra coupon locked in. Dealer reveals to settle the hand.");
         standRound();
+        return;
       }
 
       renderEverything();
+    }
+
+    function splitHand() {
+      if (!canSplitCurrentHand()) return;
+      const [first, second] = state.playerHands[0];
+      state.splitRound = true;
+      state.playerHands = [
+        [first, drawCard()],
+        [second, drawCard()]
+      ];
+      state.handOutcomes = ["playing", "pending"];
+      state.activeHandIndex = 0;
+      const totals = state.playerHands.map((hand) => handValue(hand));
+      updateMessage(`Split! Play Hand 1 first. Hand 1 shows <strong>${totals[0]}</strong>. Hand 2 shows <strong>${totals[1]}</strong>. Winning both hands jumps two levels.`);
+      logEntry(`Split used. Hand 1 ${totals[0]}, Hand 2 ${totals[1]}.`);
+      renderEverything();
+    }
+
+    function moveToNextSplitHand() {
+      const nextIndex = state.handOutcomes.findIndex((status) => status === "pending");
+      if (nextIndex === -1) return false;
+      state.activeHandIndex = nextIndex;
+      state.handOutcomes[nextIndex] = "playing";
+      const total = handValue(getCurrentPlayerHand());
+      updateMessage(`Now playing Hand ${nextIndex + 1}. Current total: <strong>${total}</strong>.`);
+      renderEverything();
+      return true;
     }
 
     function hitPlayer() {
       if (!state.roundActive) return;
-      state.playerHand.push(drawCard());
-      const total = handValue(state.playerHand);
-      updateMessage(`Player hits and moves to <strong>${total}</strong>.`);
+      const hand = getCurrentPlayerHand();
+      hand.push(drawCard());
+      const total = handValue(hand);
+
+      if (!state.splitRound) {
+        updateMessage(`Player hits and moves to <strong>${total}</strong>.`);
+        if (total > 21) {
+          settleRound("loss", `Player busts with ${total}. The run ends and they fall back to the starter prize.`);
+          return;
+        }
+        renderEverything();
+        return;
+      }
+
+      updateMessage(`Hand ${state.activeHandIndex + 1} hits to <strong>${total}</strong>.`);
       if (total > 21) {
-        settleRound("loss", `Player busts with ${total}. The run ends and they fall back to the starter prize.`);
+        state.handOutcomes[state.activeHandIndex] = "bust";
+        logEntry(`Hand ${state.activeHandIndex + 1} busts on the split.`);
+        if (!moveToNextSplitHand()) {
+          resolveSplitRound();
+        }
+        return;
       }
       renderEverything();
     }
 
-    function standRound() {
-      if (!state.roundActive) return;
+    function revealDealerAndPlay() {
       state.showDealerHole = true;
       while (handValue(state.dealerHand) < 17) {
         state.dealerHand.push(drawCard());
       }
-
-      const playerTotal = handValue(state.playerHand);
-      const dealerTotal = handValue(state.dealerHand);
-
-      if (dealerTotal > 21) {
-        settleRound("win", `Dealer busts with ${dealerTotal}. Player wins the hand.`);
-        return;
-      }
-      if (playerTotal > dealerTotal) {
-        settleRound("win", `Player ${playerTotal} beats dealer ${dealerTotal}.`);
-        return;
-      }
-      if (playerTotal < dealerTotal) {
-        settleRound("loss", `Dealer ${dealerTotal} beats player ${playerTotal}. The run ends and the starter prize stays locked in.`);
-        return;
-      }
-      settleRound("push", `Push at ${playerTotal}. The run stays alive and the same prize level is still in play.`);
     }
 
-    function settleRound(result, summary) {
+    function compareHandToDealer(hand, dealerTotal) {
+      const playerTotal = handValue(hand);
+      if (playerTotal > 21) return "loss";
+      if (dealerTotal > 21) return "win";
+      if (playerTotal > dealerTotal) return "win";
+      if (playerTotal < dealerTotal) return "loss";
+      return "push";
+    }
+
+    function standRound() {
+      if (!state.roundActive) return;
+
+      if (!state.splitRound) {
+        revealDealerAndPlay();
+        const playerTotal = handValue(state.playerHands[0]);
+        const dealerTotal = handValue(state.dealerHand);
+
+        if (dealerTotal > 21) {
+          settleRound("win", `Dealer busts with ${dealerTotal}. Player wins the hand.`);
+          return;
+        }
+        if (playerTotal > dealerTotal) {
+          settleRound("win", `Player ${playerTotal} beats dealer ${dealerTotal}.`);
+          return;
+        }
+        if (playerTotal < dealerTotal) {
+          settleRound("loss", `Dealer ${dealerTotal} beats player ${playerTotal}. The run ends and the starter prize stays locked in.`);
+          return;
+        }
+        settleRound("push", `Push at ${playerTotal}. The run stays alive and the same prize level is still in play.`);
+        return;
+      }
+
+      state.handOutcomes[state.activeHandIndex] = "stood";
+      if (!moveToNextSplitHand()) {
+        resolveSplitRound();
+      }
+    }
+
+    function resolveSplitRound() {
+      const allBust = state.playerHands.every((hand, index) => state.handOutcomes[index] === "bust" || handValue(hand) > 21);
+      if (allBust) {
+        settleRound("loss", "Both split hands bust. The run ends and the starter prize stays locked in.", { winsGained: 0 });
+        return;
+      }
+
+      revealDealerAndPlay();
+      const dealerTotal = handValue(state.dealerHand);
+      const summaryBits = [];
+      let wins = 0;
+      let pushes = 0;
+      let losses = 0;
+
+      state.playerHands.forEach((hand, index) => {
+        const total = handValue(hand);
+        const priorStatus = state.handOutcomes[index];
+        let outcome = priorStatus === "bust" ? "loss" : compareHandToDealer(hand, dealerTotal);
+        state.handOutcomes[index] = outcome;
+
+        if (outcome === "win") {
+          wins += 1;
+          summaryBits.push(`Hand ${index + 1} wins with ${total}`);
+        } else if (outcome === "push") {
+          pushes += 1;
+          summaryBits.push(`Hand ${index + 1} pushes at ${total}`);
+        } else {
+          losses += 1;
+          summaryBits.push(priorStatus === "bust" || total > 21 ? `Hand ${index + 1} busts` : `Hand ${index + 1} loses with ${total}`);
+        }
+      });
+
+      const opener = dealerTotal > 21
+        ? `Dealer busts with ${dealerTotal}.`
+        : `Dealer finishes on ${dealerTotal}.`;
+      const summary = `${opener} ${summaryBits.join(". ")}.`;
+
+      if (wins > 0) {
+        settleRound("win", summary, { winsGained: wins });
+        return;
+      }
+      if (losses > 0) {
+        settleRound("loss", `${summary} No split hands won, so the run drops back to the starter prize.`, { winsGained: 0 });
+        return;
+      }
+      settleRound("push", `${summary} Both split hands pushed, so the streak stays alive.`, { winsGained: 0 });
+    }
+
+    function settleRound(result, summary, options = {}) {
       state.roundActive = false;
       state.roundOver = true;
       state.showDealerHole = true;
 
+      const winsGained = options.winsGained ?? (result === "win" ? 1 : 0);
+      const blackjackLead = state.roundStartedWithBlackjack ? "Blackjack bonus coupon locked in. " : "";
+
       if (result === "win") {
-        state.streak += 1;
-        state.cashoutTier = getCurrentTier(state.streak);
-        updateMessage(`${summary} Current streak: <strong>${state.streak}</strong>. Cash out now for <strong>${state.cashoutTier.label}</strong> or keep chasing the next unlock.`);
-        logEntry(`Win. Current unlock: ${state.cashoutTier.label}.`);
+        state.streak += winsGained;
+        const currentPrize = getPrizeLabel(state.streak);
+        const nextTier = getNextTier(state.streak);
+        const climbText = winsGained > 1 ? ` You jump <strong>${winsGained}</strong> levels.` : " You move up one level.";
+        updateMessage(`${blackjackLead}${summary}${climbText} Current streak: <strong>${state.streak}</strong>. Cash out now for <strong>${currentPrize}</strong>${nextTier ? ` or keep chasing <strong>${nextTier.label}</strong>.` : ". You reached the top prize."}`);
+        logEntry(`Win. Current unlock: ${currentPrize}.`);
       }
 
       if (result === "push") {
-        updateMessage(`${summary} Current streak stays at <strong>${state.streak}</strong>.`);
+        updateMessage(`${blackjackLead}${summary} Current streak stays at <strong>${state.streak}</strong>.`);
         logEntry(`Push. Streak stays at ${state.streak}.`);
       }
 
       if (result === "loss") {
         state.sessionEnded = true;
-        state.finalPrize = PRIZE_LADDER[0];
-        updateMessage(`${summary} Final prize: <strong>${state.finalPrize.label}</strong>. Start a new game for the next player.`);
-        logEntry(`Loss. Game ends on the starter prize.`);
+        state.finalPrize = getPrizeLabel(0);
+        updateMessage(`${blackjackLead}${summary} Final prize: <strong>${state.finalPrize}</strong>. Start a new game for the next player.`);
+        logEntry(`Loss. Game ends on ${state.finalPrize}.`);
       }
 
+      state.roundStartedWithBlackjack = false;
       renderEverything();
     }
 
@@ -1272,9 +1541,9 @@
       state.sessionEnded = true;
       state.roundActive = false;
       state.roundOver = false;
-      state.finalPrize = getCurrentTier(state.streak);
-      updateMessage(`Player cashes out for <strong>${state.finalPrize.label}</strong>. Start a new game for the next player.`);
-      logEntry(`Cash out. Player leaves with ${state.finalPrize.label}.`);
+      state.finalPrize = getPrizeLabel(state.streak);
+      updateMessage(`Player cashes out for <strong>${state.finalPrize}</strong>. Start a new game for the next player.`);
+      logEntry(`Cash out. Player leaves with ${state.finalPrize}.`);
       renderEverything();
     }
 
@@ -1285,10 +1554,14 @@
       state.roundActive = false;
       state.roundOver = false;
       state.showDealerHole = false;
-      state.playerHand = [];
       state.dealerHand = [];
+      state.playerHands = [];
+      state.activeHandIndex = 0;
+      state.handOutcomes = [];
+      state.splitRound = false;
       state.streak = 0;
-      state.cashoutTier = PRIZE_LADDER[0];
+      state.blackjackCouponCount = 0;
+      state.roundStartedWithBlackjack = false;
       state.finalPrize = null;
       state.sessionEnded = false;
       state.log = [];
@@ -1309,6 +1582,7 @@
     el.dealBtn.addEventListener("click", startRound);
     el.hitBtn.addEventListener("click", hitPlayer);
     el.standBtn.addEventListener("click", standRound);
+    el.splitBtn.addEventListener("click", splitHand);
     el.cashoutBtn.addEventListener("click", cashOut);
     el.resetBtn.addEventListener("click", resetBooth);
 
